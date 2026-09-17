@@ -1,0 +1,49 @@
+{
+  "viewId": "job-scout.people",
+  "title": "Job Scout People",
+  "layout": "cards",
+  "theme": {
+    "accent": "#C2410C",
+    "density": "comfortable"
+  },
+  "fields": [
+    "name",
+    "role",
+    "company",
+    "linkedinUrl",
+    "email",
+    "photoUrl",
+    "why",
+    "relatedJobUrl"
+  ],
+  "items": [
+    {
+      "id": "person:linkedin:priya-mehta",
+      "name": "Priya Mehta",
+      "role": "Head of Talent",
+      "company": "Stripe",
+      "linkedinUrl": "https://www.linkedin.com/in/priya-mehta",
+      "email": "priya@stripe.com",
+      "photoUrl": "https://picsum.photos/seed/priya-mehta/160",
+      "why": "Hiring manager for community roles.",
+      "relatedJobUrl": "https://stripe.com/jobs/listing/community-manager/123",
+      "fields": {
+        "tier": "hiring_manager"
+      }
+    },
+    {
+      "id": "person:email:alex@linear.app",
+      "name": "Alex Chen",
+      "role": "Recruiter",
+      "company": "Linear",
+      "linkedinUrl": "https://www.linkedin.com/in/alex-chen",
+      "email": null,
+      "photoUrl": null,
+      "why": "Posted the product engineer role.",
+      "relatedJobUrl": "https://linear.app/careers/product-engineer",
+      "fields": {
+        "tier": "recruiter"
+      }
+    }
+  ]
+}

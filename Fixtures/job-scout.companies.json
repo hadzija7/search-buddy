@@ -1,0 +1,132 @@
+{
+  "viewId": "job-scout.companies",
+  "title": "Job Scout Companies",
+  "layout": "cards",
+  "theme": {
+    "accent": "#0F766E",
+    "density": "comfortable"
+  },
+  "fields": ["name", "website", "careersUrl", "linkedinUrl", "openRolesCount", "source"],
+  "items": [
+    {
+      "id": "company:together.ai",
+      "name": "Together AI",
+      "website": "https://www.together.ai",
+      "careersUrl": "https://job-boards.greenhouse.io/togetherai",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:cognition.ai",
+      "name": "Cognition",
+      "website": "https://cognition.ai",
+      "careersUrl": "https://jobs.ashbyhq.com/cognition",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:openai.com",
+      "name": "OpenAI",
+      "website": "https://openai.com",
+      "careersUrl": "https://jobs.ashbyhq.com/openai",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:anthropic.com",
+      "name": "Anthropic",
+      "website": "https://www.anthropic.com",
+      "careersUrl": "https://job-boards.greenhouse.io/anthropic",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:cursor.com",
+      "name": "Cursor",
+      "website": "https://cursor.com",
+      "careersUrl": "https://jobs.ashbyhq.com/cursor",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:qt.io",
+      "name": "Qt",
+      "website": "https://www.qt.io",
+      "careersUrl": "https://www.qt.io/careers",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:datadoghq.com",
+      "name": "Datadog",
+      "website": "https://www.datadoghq.com",
+      "careersUrl": "https://careers.datadoghq.com",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:alan.com",
+      "name": "Alan",
+      "website": "https://alan.com",
+      "careersUrl": "https://jobs.ashbyhq.com/alan",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:supabase.com",
+      "name": "Supabase",
+      "website": "https://supabase.com",
+      "careersUrl": "https://jobs.ashbyhq.com/supabase",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:stackblitz.com",
+      "name": "StackBlitz",
+      "website": "https://stackblitz.com",
+      "careersUrl": "https://job-boards.greenhouse.io/stackblitz",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:openrouter.ai",
+      "name": "OpenRouter",
+      "website": "https://openrouter.ai",
+      "careersUrl": "https://jobs.ashbyhq.com/openrouter",
+      "linkedinUrl": null,
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    },
+    {
+      "id": "company:lovable.dev",
+      "name": "Lovable",
+      "website": "https://lovable.dev",
+      "careersUrl": "https://jobs.ashbyhq.com/lovable",
+      "linkedinUrl": "https://www.linkedin.com/company/lovable-dev",
+      "logoUrl": null,
+      "openRolesCount": null,
+      "source": "job-scout"
+    }
+  ]
+}

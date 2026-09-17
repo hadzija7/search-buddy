@@ -1,0 +1,8 @@
+{
+  "layout": "cards",
+  "theme": {
+    "accent": "#2563EB",
+    "density": "comfortable"
+  },
+  "fields": ["photo", "name", "bio", "priorities", "xURL", "company", "role"]
+}

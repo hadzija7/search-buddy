@@ -1,0 +1,46 @@
+{
+  "viewId": "job-scout.opportunities",
+  "title": "Job Scout Opportunities",
+  "layout": "table",
+  "theme": {
+    "accent": "#7C3AED",
+    "density": "comfortable"
+  },
+  "fields": [
+    "title",
+    "company",
+    "location",
+    "status",
+    "applicationStatus",
+    "source",
+    "rank",
+    "why",
+    "url"
+  ],
+  "items": [
+    {
+      "id": "https://stripe.com/jobs/listing/community-manager/123",
+      "title": "Community Manager",
+      "company": "Stripe",
+      "location": "San Francisco, CA",
+      "status": "open",
+      "applicationStatus": "saved",
+      "source": "careers",
+      "rank": 1,
+      "why": "Matches community + SF + fintech.",
+      "url": "https://stripe.com/jobs/listing/community-manager/123"
+    },
+    {
+      "id": "https://linear.app/careers/product-engineer",
+      "title": "Product Engineer",
+      "company": "Linear",
+      "location": "Remote",
+      "status": "open",
+      "applicationStatus": null,
+      "source": "linkedin",
+      "rank": 2,
+      "why": "Strong product craft, remote-friendly.",
+      "url": "https://linear.app/careers/product-engineer"
+    }
+  ]
+}

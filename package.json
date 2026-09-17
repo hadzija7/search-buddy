@@ -1,0 +1,21 @@
+{
+  "name": "search-buddy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "lint": "eslint convex",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentmail/convex": "^0.1.0",
+    "convex": "^1.45.0",
+    "convex-helpers": "^0.1.124"
+  },
+  "devDependencies": {
+    "@convex-dev/eslint-plugin": "^4.0.0",
+    "eslint": "^10.10.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

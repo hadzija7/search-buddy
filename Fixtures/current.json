@@ -1,0 +1,47 @@
+{
+  "viewId": "sf-community-managers",
+  "title": "SF Community Managers",
+  "layout": "cards",
+  "theme": {
+    "accent": "#2563EB",
+    "density": "comfortable"
+  },
+  "fields": ["photo", "name", "bio", "priorities", "xURL", "company", "role"],
+  "items": [
+    {
+      "id": "stripe-community",
+      "name": "Jordan Hale",
+      "photoURL": "https://picsum.photos/seed/jordan-hale/160",
+      "bio": "Leads Stripe’s community programs and partner events in the Bay Area.",
+      "priorities": ["developer community", "events", "docs feedback"],
+      "xURL": "https://x.com/stripe",
+      "company": "Stripe",
+      "role": "Community Manager",
+      "tags": ["community", "sf", "fintech"],
+      "fields": {
+        "location": "South San Francisco"
+      }
+    },
+    {
+      "id": "figma-community",
+      "name": "Amina Shah",
+      "photoURL": "https://picsum.photos/seed/amina-shah/160",
+      "bio": "Runs Figma community programs and designer education.",
+      "priorities": ["education", "forums", "office hours"],
+      "xURL": "https://x.com/figma",
+      "company": "Figma",
+      "role": "Community Lead",
+      "tags": ["community", "design", "sf"]
+    },
+    {
+      "id": "convex-community",
+      "name": "Sam Ortiz",
+      "bio": "Builds the Convex community with workshops and office hours.",
+      "priorities": ["workshops", "discord", "hackathons"],
+      "xURL": "https://x.com/convex_dev",
+      "company": "Convex",
+      "role": "Community Manager",
+      "tags": ["community", "backend", "sf"]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+node_modules/
+.env
+.env.local
+.env.*
+!.env.example
+.DS_Store
+dist/
+.convex/
+data/
+
+# Xcode / Swift build slop
+DerivedData/
+macos/DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Local agent skill packs (Convex copies the same set into both)
+.agents/
+.claude/
+skills-lock.json
