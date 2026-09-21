@@ -1,9 +1,172 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { internalMutation, type MutationCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+} from "./_generated/server";
 import { agentMutation, agentQuery } from "./lib/functions";
 import { STARTER_US_TECH_COMPANIES } from "./lib/starterCompanies";
 import { companyTierValidator, companyValidator } from "./lib/validators";
+
+/** Host only: lovable.dev — no https://, no www. */
+export function normalizeDomain(input: string): string {
+  let s = input.trim().toLowerCase();
+  s = s.replace(/^https?:\/\//, "");
+  s = s.replace(/^www\./, "");
+  s = s.split("/")[0] ?? s;
+  s = s.split("?")[0] ?? s;
+  s = s.replace(/\.$/, "");
+  return s;
+}
+
+export function websiteFromDomain(domain: string): string {
+  return `https://${normalizeDomain(domain)}`;
+}
+
+const companyInput = {
+  name: v.string(),
+  domain: v.string(),
+  website: v.optional(v.string()),
+  careersUrl: v.optional(v.string()),
+  linkedinUrl: v.optional(v.string()),
+  source: v.optional(v.string()),
+  notes: v.optional(v.string()),
+};
+
+const companyDoc = v.object({
+  _id: v.id("companies"),
+  _creationTime: v.number(),
+  name: v.string(),
+  domain: v.string(),
+  website: v.optional(v.string()),
+  careersUrl: v.optional(v.string()),
+  linkedinUrl: v.optional(v.string()),
+  source: v.optional(v.string()),
+  notes: v.optional(v.string()),
+  firstSeenAt: v.number(),
+  lastSeenAt: v.number(),
+  xUrl: v.optional(v.string()),
+  industry: v.optional(v.string()),
+  country: v.optional(v.string()),
+  hqLocation: v.optional(v.string()),
+  tier: v.optional(companyTierValidator),
+  tags: v.optional(v.array(v.string())),
+  lastSearchedAt: v.optional(v.number()),
+});
+
+/** Job Scout–compatible public API */
+
+export const list = query({
+  args: {},
+  returns: v.array(companyDoc),
+  handler: async (ctx) => {
+    return await ctx.db.query("companies").collect();
+  },
+});
+
+export const getByDomain = query({
+  args: { domain: v.string() },
+  returns: v.union(companyDoc, v.null()),
+  handler: async (ctx, args) => {
+    const domain = normalizeDomain(args.domain);
+    return await ctx.db
+      .query("companies")
+      .withIndex("by_domain", (q) => q.eq("domain", domain))
+      .unique();
+  },
+});
+
+export const upsert = mutation({
+  args: companyInput,
+  returns: v.object({
+    id: v.id("companies"),
+    created: v.boolean(),
+    domain: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const domain = normalizeDomain(args.domain);
+    if (!domain) {
+      throw new Error("domain required");
+    }
+    const website = args.website?.trim() || websiteFromDomain(domain);
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("companies")
+      .withIndex("by_domain", (q) => q.eq("domain", domain))
+      .unique();
+
+    const patch = {
+      name: args.name.trim(),
+      domain,
+      website,
+      careersUrl: args.careersUrl,
+      linkedinUrl: args.linkedinUrl,
+      source: args.source,
+      notes: args.notes,
+      lastSeenAt: now,
+    };
+
+    if (existing) {
+      await ctx.db.patch("companies", existing._id, patch);
+      return { id: existing._id, created: false, domain };
+    }
+
+    const id = await ctx.db.insert("companies", {
+      ...patch,
+      firstSeenAt: now,
+    });
+    return { id, created: true, domain };
+  },
+});
+
+export const upsertMany = mutation({
+  args: {
+    companies: v.array(v.object(companyInput)),
+  },
+  returns: v.object({
+    inserted: v.number(),
+    updated: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    let inserted = 0;
+    let updated = 0;
+    const now = Date.now();
+    for (const item of args.companies) {
+      const domain = normalizeDomain(item.domain);
+      if (!domain) continue;
+      const website = item.website?.trim() || websiteFromDomain(domain);
+      const existing = await ctx.db
+        .query("companies")
+        .withIndex("by_domain", (q) => q.eq("domain", domain))
+        .unique();
+      const patch = {
+        name: item.name.trim(),
+        domain,
+        website,
+        careersUrl: item.careersUrl,
+        linkedinUrl: item.linkedinUrl,
+        source: item.source,
+        notes: item.notes,
+        lastSeenAt: now,
+      };
+      if (existing) {
+        await ctx.db.patch("companies", existing._id, patch);
+        updated += 1;
+      } else {
+        await ctx.db.insert("companies", {
+          ...patch,
+          firstSeenAt: now,
+        });
+        inserted += 1;
+      }
+    }
+    return { inserted, updated };
+  },
+});
+
+/** SearchBuddy agent catalog helpers (distinct names; do not shadow Job Scout API) */
 
 export const get = agentQuery({
   args: { companyId: v.id("companies") },
@@ -13,7 +176,7 @@ export const get = agentQuery({
   },
 });
 
-export const list = agentQuery({
+export const listCatalog = agentQuery({
   args: {
     tier: v.optional(companyTierValidator),
     paginationOpts: paginationOptsValidator,
@@ -53,7 +216,7 @@ export const searchByName = agentQuery({
   },
 });
 
-export const upsert = agentMutation({
+export const upsertCatalog = agentMutation({
   args: {
     name: v.string(),
     domain: v.optional(v.string()),
@@ -71,28 +234,35 @@ export const upsert = agentMutation({
   returns: v.id("companies"),
   handler: async (ctx, args) => {
     const now = Date.now();
-    if (args.domain) {
-      const existingByDomain = await ctx.db
-        .query("companies")
-        .withIndex("by_domain", (q) => q.eq("domain", args.domain))
-        .unique();
-      if (existingByDomain) {
-        await ctx.db.patch("companies", existingByDomain._id, {
-          name: args.name,
-          website: args.website ?? existingByDomain.website,
-          careersUrl: args.careersUrl ?? existingByDomain.careersUrl,
-          linkedinUrl: args.linkedinUrl ?? existingByDomain.linkedinUrl,
-          xUrl: args.xUrl ?? existingByDomain.xUrl,
-          industry: args.industry ?? existingByDomain.industry,
-          country: args.country ?? existingByDomain.country,
-          hqLocation: args.hqLocation ?? existingByDomain.hqLocation,
-          tier: args.tier ?? existingByDomain.tier,
-          tags: args.tags ?? existingByDomain.tags,
-          notes: args.notes ?? existingByDomain.notes,
-          updatedAt: now,
-        });
-        return existingByDomain._id;
-      }
+    const domainFromArgs = args.domain
+      ? normalizeDomain(args.domain)
+      : args.website
+        ? normalizeDomain(args.website)
+        : "";
+    if (!domainFromArgs) {
+      throw new Error("domain required (pass domain or website)");
+    }
+
+    const existingByDomain = await ctx.db
+      .query("companies")
+      .withIndex("by_domain", (q) => q.eq("domain", domainFromArgs))
+      .unique();
+    if (existingByDomain) {
+      await ctx.db.patch("companies", existingByDomain._id, {
+        name: args.name,
+        website: args.website ?? existingByDomain.website,
+        careersUrl: args.careersUrl ?? existingByDomain.careersUrl,
+        linkedinUrl: args.linkedinUrl ?? existingByDomain.linkedinUrl,
+        xUrl: args.xUrl ?? existingByDomain.xUrl,
+        industry: args.industry ?? existingByDomain.industry,
+        country: args.country ?? existingByDomain.country,
+        hqLocation: args.hqLocation ?? existingByDomain.hqLocation,
+        tier: args.tier ?? existingByDomain.tier,
+        tags: args.tags ?? existingByDomain.tags,
+        notes: args.notes ?? existingByDomain.notes,
+        lastSeenAt: now,
+      });
+      return existingByDomain._id;
     }
 
     const existingByName = await ctx.db
@@ -101,7 +271,7 @@ export const upsert = agentMutation({
       .first();
     if (existingByName) {
       await ctx.db.patch("companies", existingByName._id, {
-        domain: args.domain ?? existingByName.domain,
+        domain: domainFromArgs,
         website: args.website ?? existingByName.website,
         careersUrl: args.careersUrl ?? existingByName.careersUrl,
         linkedinUrl: args.linkedinUrl ?? existingByName.linkedinUrl,
@@ -112,15 +282,15 @@ export const upsert = agentMutation({
         tier: args.tier ?? existingByName.tier,
         tags: args.tags ?? existingByName.tags,
         notes: args.notes ?? existingByName.notes,
-        updatedAt: now,
+        lastSeenAt: now,
       });
       return existingByName._id;
     }
 
     return await ctx.db.insert("companies", {
       name: args.name,
-      domain: args.domain,
-      website: args.website,
+      domain: domainFromArgs,
+      website: args.website ?? websiteFromDomain(domainFromArgs),
       careersUrl: args.careersUrl,
       linkedinUrl: args.linkedinUrl,
       xUrl: args.xUrl,
@@ -130,8 +300,8 @@ export const upsert = agentMutation({
       tier: args.tier ?? "other",
       tags: args.tags ?? [],
       notes: args.notes,
-      createdAt: now,
-      updatedAt: now,
+      firstSeenAt: now,
+      lastSeenAt: now,
     });
   },
 });
@@ -171,7 +341,7 @@ async function seedStarterCompanies(
   for (const company of STARTER_US_TECH_COMPANIES) {
     await ctx.db.insert("companies", {
       name: company.name,
-      domain: company.domain,
+      domain: normalizeDomain(company.domain),
       website: company.website,
       careersUrl: company.careersUrl,
       linkedinUrl: company.linkedinUrl,
@@ -181,8 +351,9 @@ async function seedStarterCompanies(
       hqLocation: company.hqLocation,
       tier: "top100_us_tech",
       tags: company.tags,
-      createdAt: now,
-      updatedAt: now,
+      source: "starter",
+      firstSeenAt: now,
+      lastSeenAt: now,
     });
     inserted += 1;
   }
@@ -195,7 +366,7 @@ export const markSearched = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.patch("companies", args.companyId, {
       lastSearchedAt: args.searchedAt,
-      updatedAt: args.searchedAt,
+      lastSeenAt: args.searchedAt,
     });
     return null;
   },

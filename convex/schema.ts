@@ -1,7 +1,86 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+/**
+ * Core `jobs` + `companies` match Job Scout’s Convex DB so SearchBuddy can
+ * point CONVEX_URL at the same deployment. Extra tables below are SearchBuddy
+ * agent extensions and stay additive.
+ */
 export default defineSchema({
+  // --- Job Scout (canonical) ---
+  jobs: defineTable({
+    title: v.string(),
+    company: v.string(),
+    location: v.optional(v.string()),
+    url: v.string(),
+    why: v.optional(v.string()),
+    source: v.string(),
+    status: v.union(
+      v.literal("confirmed"),
+      v.literal("signal"),
+      v.literal("stale"),
+      v.literal("closed"),
+      v.literal("adjacent"),
+    ),
+    applicationStatus: v.optional(
+      v.union(
+        v.literal("none"),
+        v.literal("applied"),
+        v.literal("waiting"),
+        v.literal("interview"),
+        v.literal("rejected"),
+        v.literal("offer"),
+        v.literal("withdrawn"),
+      ),
+    ),
+    appliedAt: v.optional(v.number()),
+    outreachNote: v.optional(v.string()),
+    query: v.optional(v.string()),
+    rank: v.optional(v.number()),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_url", ["url"])
+    .index("by_company", ["company"])
+    .index("by_status", ["status"])
+    .index("by_query", ["query"])
+    .index("by_applicationStatus", ["applicationStatus"]),
+
+  companies: defineTable({
+    name: v.string(),
+    /** Host only, no scheme/www — dedupe key + Clearbit logo host */
+    domain: v.string(),
+    website: v.optional(v.string()),
+    careersUrl: v.optional(v.string()),
+    linkedinUrl: v.optional(v.string()),
+    source: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    // Optional SearchBuddy catalog extensions (absent on plain Job Scout rows)
+    xUrl: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    country: v.optional(v.string()),
+    hqLocation: v.optional(v.string()),
+    tier: v.optional(
+      v.union(
+        v.literal("top100_us_tech"),
+        v.literal("notable"),
+        v.literal("other"),
+      ),
+    ),
+    tags: v.optional(v.array(v.string())),
+    lastSearchedAt: v.optional(v.number()),
+  })
+    .index("by_domain", ["domain"])
+    .index("by_name", ["name"])
+    .index("by_tier", ["tier"])
+    .searchIndex("search_name", {
+      searchField: "name",
+      filterFields: ["tier", "country"],
+    }),
+
+  // --- SearchBuddy agent extensions ---
   profiles: defineTable({
     handle: v.string(),
     displayName: v.optional(v.string()),
@@ -17,35 +96,6 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_handle", ["handle"]),
-
-  companies: defineTable({
-    name: v.string(),
-    domain: v.optional(v.string()),
-    website: v.optional(v.string()),
-    careersUrl: v.optional(v.string()),
-    linkedinUrl: v.optional(v.string()),
-    xUrl: v.optional(v.string()),
-    industry: v.optional(v.string()),
-    country: v.optional(v.string()),
-    hqLocation: v.optional(v.string()),
-    tier: v.union(
-      v.literal("top100_us_tech"),
-      v.literal("notable"),
-      v.literal("other"),
-    ),
-    tags: v.array(v.string()),
-    notes: v.optional(v.string()),
-    lastSearchedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_domain", ["domain"])
-    .index("by_tier", ["tier"])
-    .index("by_name", ["name"])
-    .searchIndex("search_name", {
-      searchField: "name",
-      filterFields: ["tier", "country"],
-    }),
 
   opportunities: defineTable({
     companyId: v.id("companies"),
