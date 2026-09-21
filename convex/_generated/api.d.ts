@@ -10,6 +10,7 @@
 
 import type * as companies from "../companies.js";
 import type * as http from "../http.js";
+import type * as jobs from "../jobs.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_exa from "../lib/exa.js";
 import type * as lib_firecrawl from "../lib/firecrawl.js";
@@ -34,6 +35,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   companies: typeof companies;
   http: typeof http;
+  jobs: typeof jobs;
   "lib/env": typeof lib_env;
   "lib/exa": typeof lib_exa;
   "lib/firecrawl": typeof lib_firecrawl;
