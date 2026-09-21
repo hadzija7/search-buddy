@@ -262,7 +262,7 @@ export const searchBuddyView = agentQuery({
     const limit = Math.min(args.limit ?? 50, 100);
     let rows: Doc<"opportunities">[] = [];
 
-    if (args.opportunityIds && args.opportunityIds.length > 0) {
+    if (args.opportunityIds !== undefined) {
       for (const id of args.opportunityIds) {
         const row = await ctx.db.get("opportunities", id);
         if (row) {
@@ -285,11 +285,17 @@ export const searchBuddyView = agentQuery({
         .take(limit);
     } else {
       const status = args.status ?? "open";
-      rows = await ctx.db
+      const byStatus = ctx.db
         .query("opportunities")
         .withIndex("by_status", (q) => q.eq("status", status))
-        .order("desc")
-        .take(limit);
+        .order("desc");
+      if (args.roleFamily) {
+        rows = await byStatus
+          .filter((q) => q.eq(q.field("roleFamily"), args.roleFamily!))
+          .take(limit);
+      } else {
+        rows = await byStatus.take(limit);
+      }
     }
 
     const companyCache = new Map<Id<"companies">, string>();
