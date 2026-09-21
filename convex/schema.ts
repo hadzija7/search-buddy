@@ -97,8 +97,14 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_handle", ["handle"]),
 
+  /**
+   * Scouting openings store. SearchBuddy’s `job-scout.opportunities` view is
+   * driven from this table (not `jobs`). `jobs` remains Job Scout–compatible.
+   */
   opportunities: defineTable({
     companyId: v.id("companies"),
+    /** Denormalized for SearchBuddy export; refreshed on upsert when omitted. */
+    companyName: v.optional(v.string()),
     title: v.string(),
     roleFamily: v.optional(v.string()),
     description: v.string(),
@@ -111,6 +117,8 @@ export default defineSchema({
     ),
     sourceUrl: v.string(),
     sourceSnippet: v.optional(v.string()),
+    /** Scout rationale for SearchBuddy `why` popover; falls back to sourceSnippet. */
+    why: v.optional(v.string()),
     location: v.optional(v.string()),
     remote: v.optional(v.boolean()),
     status: v.union(
@@ -118,6 +126,20 @@ export default defineSchema({
       v.literal("closed"),
       v.literal("unknown"),
     ),
+    /** null / omitted → SearchBuddy UI shows "none". */
+    applicationStatus: v.optional(
+      v.union(
+        v.literal("none"),
+        v.literal("saved"),
+        v.literal("applied"),
+        v.literal("waiting"),
+        v.literal("interview"),
+        v.literal("rejected"),
+        v.literal("offer"),
+        v.literal("withdrawn"),
+      ),
+    ),
+    rank: v.optional(v.number()),
     discoveredAt: v.number(),
     postedAt: v.optional(v.number()),
     updatedAt: v.number(),
