@@ -1,5 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalMutation,
   mutation,
@@ -23,6 +24,106 @@ export function normalizeDomain(input: string): string {
 
 export function websiteFromDomain(domain: string): string {
   return `https://${normalizeDomain(domain)}`;
+}
+
+type NormalizedCompany = {
+  _id: Id<"companies">;
+  _creationTime: number;
+  name: string;
+  domain: string;
+  website?: string;
+  careersUrl?: string;
+  linkedinUrl?: string;
+  source?: string;
+  notes?: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  xUrl?: string;
+  industry?: string;
+  country?: string;
+  hqLocation?: string;
+  tier?: "top100_us_tech" | "notable" | "other";
+  tags?: string[];
+  lastSearchedAt?: number;
+};
+
+/** Pre-migration SearchBuddy rows may still carry these. */
+type CompanyRow = Doc<"companies"> & {
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+/**
+ * Map stored company rows (Job Scout or legacy SearchBuddy) to the Job Scout
+ * API shape. Legacy used createdAt/updatedAt instead of firstSeenAt/lastSeenAt.
+ */
+export function asJobScoutCompany(doc: Doc<"companies">): NormalizedCompany {
+  const row = doc as CompanyRow;
+  const firstSeenAt = row.firstSeenAt ?? row.createdAt ?? row._creationTime;
+  const lastSeenAt = row.lastSeenAt ?? row.updatedAt ?? firstSeenAt;
+  let domain = row.domain?.trim() ?? "";
+  if (!domain && row.website) {
+    domain = normalizeDomain(row.website);
+  }
+  if (!domain) {
+    throw new Error(`Company ${row._id} is missing domain`);
+  }
+
+  return {
+    _id: row._id,
+    _creationTime: row._creationTime,
+    name: row.name,
+    domain,
+    website: row.website,
+    careersUrl: row.careersUrl,
+    linkedinUrl: row.linkedinUrl,
+    source: row.source,
+    notes: row.notes,
+    firstSeenAt,
+    lastSeenAt,
+    xUrl: row.xUrl,
+    industry: row.industry,
+    country: row.country,
+    hqLocation: row.hqLocation,
+    tier: row.tier,
+    tags: row.tags,
+    lastSearchedAt: row.lastSearchedAt,
+  };
+}
+
+function needsLegacyMigration(doc: Doc<"companies">): boolean {
+  const row = doc as CompanyRow;
+  return (
+    row.firstSeenAt === undefined ||
+    row.lastSeenAt === undefined ||
+    row.createdAt !== undefined ||
+    row.updatedAt !== undefined
+  );
+}
+
+function jobScoutCompanyFields(doc: Doc<"companies">): Omit<
+  NormalizedCompany,
+  "_id" | "_creationTime"
+> {
+  const normalized = asJobScoutCompany(doc);
+  return {
+    name: normalized.name,
+    domain: normalized.domain,
+    website: normalized.website,
+    careersUrl: normalized.careersUrl,
+    linkedinUrl: normalized.linkedinUrl,
+    source: normalized.source,
+    notes: normalized.notes,
+    firstSeenAt: normalized.firstSeenAt,
+    lastSeenAt: normalized.lastSeenAt,
+    xUrl: normalized.xUrl,
+    industry: normalized.industry,
+    country: normalized.country,
+    hqLocation: normalized.hqLocation,
+    tier: normalized.tier,
+    tags: normalized.tags,
+    lastSearchedAt: normalized.lastSearchedAt,
+  };
 }
 
 const companyInput = {
@@ -62,7 +163,8 @@ export const list = query({
   args: {},
   returns: v.array(companyDoc),
   handler: async (ctx) => {
-    return await ctx.db.query("companies").collect();
+    const rows = await ctx.db.query("companies").collect();
+    return rows.map(asJobScoutCompany);
   },
 });
 
@@ -71,10 +173,11 @@ export const getByDomain = query({
   returns: v.union(companyDoc, v.null()),
   handler: async (ctx, args) => {
     const domain = normalizeDomain(args.domain);
-    return await ctx.db
+    const row = await ctx.db
       .query("companies")
       .withIndex("by_domain", (q) => q.eq("domain", domain))
       .unique();
+    return row ? asJobScoutCompany(row) : null;
   },
 });
 
@@ -109,7 +212,15 @@ export const upsert = mutation({
     };
 
     if (existing) {
-      await ctx.db.patch("companies", existing._id, patch);
+      await ctx.db.replace("companies", existing._id, {
+        ...jobScoutCompanyFields(existing),
+        ...patch,
+        firstSeenAt:
+          existing.firstSeenAt ??
+          (existing as CompanyRow).createdAt ??
+          existing._creationTime,
+        lastSeenAt: now,
+      });
       return { id: existing._id, created: false, domain };
     }
 
@@ -152,7 +263,15 @@ export const upsertMany = mutation({
         lastSeenAt: now,
       };
       if (existing) {
-        await ctx.db.patch("companies", existing._id, patch);
+        await ctx.db.replace("companies", existing._id, {
+          ...jobScoutCompanyFields(existing),
+          ...patch,
+          firstSeenAt:
+            existing.firstSeenAt ??
+            (existing as CompanyRow).createdAt ??
+            existing._creationTime,
+          lastSeenAt: now,
+        });
         updated += 1;
       } else {
         await ctx.db.insert("companies", {
@@ -172,7 +291,8 @@ export const get = agentQuery({
   args: { companyId: v.id("companies") },
   returns: v.union(companyValidator, v.null()),
   handler: async (ctx, args) => {
-    return await ctx.db.get("companies", args.companyId);
+    const row = await ctx.db.get("companies", args.companyId);
+    return row ? asJobScoutCompany(row) : null;
   },
 });
 
@@ -187,13 +307,19 @@ export const listCatalog = agentQuery({
     continueCursor: v.string(),
   }),
   handler: async (ctx, args) => {
-    if (args.tier) {
-      return await ctx.db
-        .query("companies")
-        .withIndex("by_tier", (q) => q.eq("tier", args.tier!))
-        .paginate(args.paginationOpts);
-    }
-    return await ctx.db.query("companies").order("asc").paginate(args.paginationOpts);
+    const result = args.tier
+      ? await ctx.db
+          .query("companies")
+          .withIndex("by_tier", (q) => q.eq("tier", args.tier!))
+          .paginate(args.paginationOpts)
+      : await ctx.db
+          .query("companies")
+          .order("asc")
+          .paginate(args.paginationOpts);
+    return {
+      ...result,
+      page: result.page.map(asJobScoutCompany),
+    };
   },
 });
 
@@ -206,13 +332,14 @@ export const searchByName = agentQuery({
   returns: v.array(companyValidator),
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 20, 50);
-    return await ctx.db
+    const rows = await ctx.db
       .query("companies")
       .withSearchIndex("search_name", (q) => {
         const searched = q.search("name", args.query);
         return args.tier ? searched.eq("tier", args.tier) : searched;
       })
       .take(limit);
+    return rows.map(asJobScoutCompany);
   },
 });
 
@@ -248,7 +375,8 @@ export const upsertCatalog = agentMutation({
       .withIndex("by_domain", (q) => q.eq("domain", domainFromArgs))
       .unique();
     if (existingByDomain) {
-      await ctx.db.patch("companies", existingByDomain._id, {
+      await ctx.db.replace("companies", existingByDomain._id, {
+        ...jobScoutCompanyFields(existingByDomain),
         name: args.name,
         website: args.website ?? existingByDomain.website,
         careersUrl: args.careersUrl ?? existingByDomain.careersUrl,
@@ -270,7 +398,8 @@ export const upsertCatalog = agentMutation({
       .withIndex("by_name", (q) => q.eq("name", args.name))
       .first();
     if (existingByName) {
-      await ctx.db.patch("companies", existingByName._id, {
+      await ctx.db.replace("companies", existingByName._id, {
+        ...jobScoutCompanyFields(existingByName),
         domain: domainFromArgs,
         website: args.website ?? existingByName.website,
         careersUrl: args.careersUrl ?? existingByName.careersUrl,
@@ -369,5 +498,71 @@ export const markSearched = internalMutation({
       lastSeenAt: args.searchedAt,
     });
     return null;
+  },
+});
+
+/**
+ * One-shot / batched migration: SearchBuddy createdAt/updatedAt → Job Scout
+ * firstSeenAt/lastSeenAt, and drop legacy fields via replace.
+ *
+ *   npx convex run companies:migrateLegacyTimestamps '{"paginationOpts":{"numItems":100,"cursor":null}}'
+ *
+ * Re-run with the returned continueCursor until isDone is true.
+ */
+export const migrateLegacyTimestamps = mutation({
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    scanned: v.number(),
+    migrated: v.number(),
+    skipped: v.number(),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("companies")
+      .order("asc")
+      .paginate(args.paginationOpts);
+
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const doc of page.page) {
+      if (!needsLegacyMigration(doc)) {
+        skipped += 1;
+        continue;
+      }
+      await ctx.db.replace("companies", doc._id, jobScoutCompanyFields(doc));
+      migrated += 1;
+    }
+
+    return {
+      scanned: page.page.length,
+      migrated,
+      skipped,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
+  },
+});
+
+/** Count companies still on the legacy timestamp shape (for post-migrate checks). */
+export const countLegacyTimestampRows = query({
+  args: {},
+  returns: v.object({
+    total: v.number(),
+    legacy: v.number(),
+  }),
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("companies").collect();
+    let legacy = 0;
+    for (const row of rows) {
+      if (needsLegacyMigration(row)) {
+        legacy += 1;
+      }
+    }
+    return { total: rows.length, legacy };
   },
 });

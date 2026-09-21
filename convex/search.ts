@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { asJobScoutCompany } from "./companies";
 import { agentQuery } from "./lib/functions";
 import { requireProfile } from "./lib/profiles";
 import { matchesLocations, roleSearchText } from "./lib/queryIntent";
@@ -125,11 +126,11 @@ export const selectCompanies = internalQuery({
       ),
     );
     if (local.length > 0) {
-      return local.slice(0, limit);
+      return local.slice(0, limit).map(asJobScoutCompany);
     }
 
     if (preferTop) {
-      return catalog.slice(0, limit);
+      return catalog.slice(0, limit).map(asJobScoutCompany);
     }
 
     const named = await ctx.db
@@ -137,10 +138,10 @@ export const selectCompanies = internalQuery({
       .withSearchIndex("search_name", (q) => q.search("name", args.query))
       .take(limit);
     if (named.length > 0) {
-      return named;
+      return named.map(asJobScoutCompany);
     }
 
-    return catalog.slice(0, limit);
+    return catalog.slice(0, limit).map(asJobScoutCompany);
   },
 });
 

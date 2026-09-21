@@ -46,6 +46,20 @@ Critical format rules the query already satisfies:
 
 See `Fixtures/job-scout.opportunities.json` and [`macos/README.md`](macos/README.md).
 
+### Companies migration (done on kindhearted-lion-490)
+
+PR #1 renamed company timestamps to Job Scout’s `firstSeenAt`/`lastSeenAt`. Live catalog rows used SearchBuddy `createdAt`/`updatedAt`.
+
+`companies:migrateLegacyTimestamps` rewrites those rows (`createdAt`→`firstSeenAt`, `updatedAt`→`lastSeenAt`, drops legacy fields). Already run on `kindhearted-lion-490` (24 companies, `legacy: 0`).
+
+To re-check or run on another deployment:
+
+```bash
+npx convex run companies:migrateLegacyTimestamps '{"paginationOpts":{"numItems":100,"cursor":null}}'
+npx convex run companies:countLegacyTimestampRows '{}'
+# expect { "legacy": 0 }
+```
+
 ### Connect a deployment
 
 Do **not** commit deploy keys or `.env` files. When you have the Convex deployment URL:
