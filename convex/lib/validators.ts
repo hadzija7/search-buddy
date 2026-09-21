@@ -20,6 +20,18 @@ export const opportunityStatusValidator = v.union(
   v.literal("unknown"),
 );
 
+/** SearchBuddy application-status chips; omit/null → UI "none". */
+export const opportunityApplicationStatusValidator = v.union(
+  v.literal("none"),
+  v.literal("saved"),
+  v.literal("applied"),
+  v.literal("waiting"),
+  v.literal("interview"),
+  v.literal("rejected"),
+  v.literal("offer"),
+  v.literal("withdrawn"),
+);
+
 export const searchRunStatusValidator = v.union(
   v.literal("running"),
   v.literal("completed"),
@@ -76,19 +88,50 @@ export const opportunityValidator = v.object({
   _id: v.id("opportunities"),
   _creationTime: v.number(),
   companyId: v.id("companies"),
+  companyName: v.optional(v.string()),
   title: v.string(),
   roleFamily: v.optional(v.string()),
   description: v.string(),
   source: opportunitySourceValidator,
   sourceUrl: v.string(),
   sourceSnippet: v.optional(v.string()),
+  why: v.optional(v.string()),
   location: v.optional(v.string()),
   remote: v.optional(v.boolean()),
   status: opportunityStatusValidator,
+  applicationStatus: v.optional(opportunityApplicationStatusValidator),
+  rank: v.optional(v.number()),
   discoveredAt: v.number(),
   postedAt: v.optional(v.number()),
   updatedAt: v.number(),
   searchRunId: v.optional(v.id("searchRuns")),
+});
+
+/** Flat SearchBuddy `job-scout.opportunities` item (never nest under `fields`). */
+export const searchBuddyOpportunityItemValidator = v.object({
+  id: v.string(),
+  title: v.string(),
+  company: v.string(),
+  location: v.union(v.string(), v.null()),
+  status: opportunityStatusValidator,
+  applicationStatus: v.union(opportunityApplicationStatusValidator, v.null()),
+  source: opportunitySourceValidator,
+  rank: v.union(v.number(), v.null()),
+  why: v.union(v.string(), v.null()),
+  url: v.string(),
+});
+
+export const searchBuddyOpportunitiesViewValidator = v.object({
+  viewId: v.literal("job-scout.opportunities"),
+  title: v.string(),
+  layout: v.literal("table"),
+  theme: v.object({
+    accent: v.literal("#0F766E"),
+    density: v.literal("comfortable"),
+  }),
+  /** Must stay a string array — never `[{key,label}]`. */
+  fields: v.array(v.string()),
+  items: v.array(searchBuddyOpportunityItemValidator),
 });
 
 export const searchRunValidator = v.object({
