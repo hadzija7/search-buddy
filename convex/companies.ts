@@ -47,50 +47,57 @@ type NormalizedCompany = {
   lastSearchedAt?: number;
 };
 
+/** Pre-migration SearchBuddy rows may still carry these. */
+type CompanyRow = Doc<"companies"> & {
+  createdAt?: number;
+  updatedAt?: number;
+};
+
 /**
  * Map stored company rows (Job Scout or legacy SearchBuddy) to the Job Scout
  * API shape. Legacy used createdAt/updatedAt instead of firstSeenAt/lastSeenAt.
  */
 export function asJobScoutCompany(doc: Doc<"companies">): NormalizedCompany {
-  const firstSeenAt =
-    doc.firstSeenAt ?? doc.createdAt ?? doc._creationTime;
-  const lastSeenAt = doc.lastSeenAt ?? doc.updatedAt ?? firstSeenAt;
-  let domain = doc.domain?.trim() ?? "";
-  if (!domain && doc.website) {
-    domain = normalizeDomain(doc.website);
+  const row = doc as CompanyRow;
+  const firstSeenAt = row.firstSeenAt ?? row.createdAt ?? row._creationTime;
+  const lastSeenAt = row.lastSeenAt ?? row.updatedAt ?? firstSeenAt;
+  let domain = row.domain?.trim() ?? "";
+  if (!domain && row.website) {
+    domain = normalizeDomain(row.website);
   }
   if (!domain) {
-    throw new Error(`Company ${doc._id} is missing domain`);
+    throw new Error(`Company ${row._id} is missing domain`);
   }
 
   return {
-    _id: doc._id,
-    _creationTime: doc._creationTime,
-    name: doc.name,
+    _id: row._id,
+    _creationTime: row._creationTime,
+    name: row.name,
     domain,
-    website: doc.website,
-    careersUrl: doc.careersUrl,
-    linkedinUrl: doc.linkedinUrl,
-    source: doc.source,
-    notes: doc.notes,
+    website: row.website,
+    careersUrl: row.careersUrl,
+    linkedinUrl: row.linkedinUrl,
+    source: row.source,
+    notes: row.notes,
     firstSeenAt,
     lastSeenAt,
-    xUrl: doc.xUrl,
-    industry: doc.industry,
-    country: doc.country,
-    hqLocation: doc.hqLocation,
-    tier: doc.tier,
-    tags: doc.tags,
-    lastSearchedAt: doc.lastSearchedAt,
+    xUrl: row.xUrl,
+    industry: row.industry,
+    country: row.country,
+    hqLocation: row.hqLocation,
+    tier: row.tier,
+    tags: row.tags,
+    lastSearchedAt: row.lastSearchedAt,
   };
 }
 
 function needsLegacyMigration(doc: Doc<"companies">): boolean {
+  const row = doc as CompanyRow;
   return (
-    doc.firstSeenAt === undefined ||
-    doc.lastSeenAt === undefined ||
-    doc.createdAt !== undefined ||
-    doc.updatedAt !== undefined
+    row.firstSeenAt === undefined ||
+    row.lastSeenAt === undefined ||
+    row.createdAt !== undefined ||
+    row.updatedAt !== undefined
   );
 }
 
@@ -209,7 +216,9 @@ export const upsert = mutation({
         ...jobScoutCompanyFields(existing),
         ...patch,
         firstSeenAt:
-          existing.firstSeenAt ?? existing.createdAt ?? existing._creationTime,
+          existing.firstSeenAt ??
+          (existing as CompanyRow).createdAt ??
+          existing._creationTime,
         lastSeenAt: now,
       });
       return { id: existing._id, created: false, domain };
@@ -258,7 +267,9 @@ export const upsertMany = mutation({
           ...jobScoutCompanyFields(existing),
           ...patch,
           firstSeenAt:
-            existing.firstSeenAt ?? existing.createdAt ?? existing._creationTime,
+            existing.firstSeenAt ??
+            (existing as CompanyRow).createdAt ??
+            existing._creationTime,
           lastSeenAt: now,
         });
         updated += 1;

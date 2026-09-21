@@ -55,16 +55,8 @@ export default defineSchema({
     linkedinUrl: v.optional(v.string()),
     source: v.optional(v.string()),
     notes: v.optional(v.string()),
-    /**
-     * Job Scout timestamps. Optional only while legacy SearchBuddy rows
-     * (`createdAt`/`updatedAt`) are migrated — see companies:migrateLegacyTimestamps.
-     */
-    firstSeenAt: v.optional(v.number()),
-    lastSeenAt: v.optional(v.number()),
-    /** @deprecated Legacy SearchBuddy fields — removed by migrateLegacyTimestamps */
-    createdAt: v.optional(v.number()),
-    /** @deprecated Legacy SearchBuddy fields — removed by migrateLegacyTimestamps */
-    updatedAt: v.optional(v.number()),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
     // Optional SearchBuddy catalog extensions (absent on plain Job Scout rows)
     xUrl: v.optional(v.string()),
     industry: v.optional(v.string()),
