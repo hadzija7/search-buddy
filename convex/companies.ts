@@ -97,7 +97,21 @@ export const upsert = mutation({
       .withIndex("by_domain", (q) => q.eq("domain", domain))
       .unique();
 
-    const patch = {
+    if (existing) {
+      await ctx.db.patch("companies", existing._id, {
+        name: args.name.trim(),
+        domain,
+        website,
+        careersUrl: args.careersUrl ?? existing.careersUrl,
+        linkedinUrl: args.linkedinUrl ?? existing.linkedinUrl,
+        source: args.source ?? existing.source,
+        notes: args.notes ?? existing.notes,
+        lastSeenAt: now,
+      });
+      return { id: existing._id, created: false, domain };
+    }
+
+    const id = await ctx.db.insert("companies", {
       name: args.name.trim(),
       domain,
       website,
@@ -105,17 +119,8 @@ export const upsert = mutation({
       linkedinUrl: args.linkedinUrl,
       source: args.source,
       notes: args.notes,
-      lastSeenAt: now,
-    };
-
-    if (existing) {
-      await ctx.db.patch("companies", existing._id, patch);
-      return { id: existing._id, created: false, domain };
-    }
-
-    const id = await ctx.db.insert("companies", {
-      ...patch,
       firstSeenAt: now,
+      lastSeenAt: now,
     });
     return { id, created: true, domain };
   },
@@ -141,23 +146,29 @@ export const upsertMany = mutation({
         .query("companies")
         .withIndex("by_domain", (q) => q.eq("domain", domain))
         .unique();
-      const patch = {
-        name: item.name.trim(),
-        domain,
-        website,
-        careersUrl: item.careersUrl,
-        linkedinUrl: item.linkedinUrl,
-        source: item.source,
-        notes: item.notes,
-        lastSeenAt: now,
-      };
       if (existing) {
-        await ctx.db.patch("companies", existing._id, patch);
+        await ctx.db.patch("companies", existing._id, {
+          name: item.name.trim(),
+          domain,
+          website,
+          careersUrl: item.careersUrl ?? existing.careersUrl,
+          linkedinUrl: item.linkedinUrl ?? existing.linkedinUrl,
+          source: item.source ?? existing.source,
+          notes: item.notes ?? existing.notes,
+          lastSeenAt: now,
+        });
         updated += 1;
       } else {
         await ctx.db.insert("companies", {
-          ...patch,
+          name: item.name.trim(),
+          domain,
+          website,
+          careersUrl: item.careersUrl,
+          linkedinUrl: item.linkedinUrl,
+          source: item.source,
+          notes: item.notes,
           firstSeenAt: now,
+          lastSeenAt: now,
         });
         inserted += 1;
       }
@@ -193,7 +204,10 @@ export const listCatalog = agentQuery({
         .withIndex("by_tier", (q) => q.eq("tier", args.tier!))
         .paginate(args.paginationOpts);
     }
-    return await ctx.db.query("companies").order("asc").paginate(args.paginationOpts);
+    return await ctx.db
+      .query("companies")
+      .order("asc")
+      .paginate(args.paginationOpts);
   },
 });
 
@@ -234,18 +248,16 @@ export const upsertCatalog = agentMutation({
   returns: v.id("companies"),
   handler: async (ctx, args) => {
     const now = Date.now();
-    const domainFromArgs = args.domain
-      ? normalizeDomain(args.domain)
-      : args.website
-        ? normalizeDomain(args.website)
-        : "";
-    if (!domainFromArgs) {
+    const explicitDomain = args.domain ? normalizeDomain(args.domain) : "";
+    const domainFromWebsite = args.website ? normalizeDomain(args.website) : "";
+    const lookupDomain = explicitDomain || domainFromWebsite;
+    if (!lookupDomain) {
       throw new Error("domain required (pass domain or website)");
     }
 
     const existingByDomain = await ctx.db
       .query("companies")
-      .withIndex("by_domain", (q) => q.eq("domain", domainFromArgs))
+      .withIndex("by_domain", (q) => q.eq("domain", lookupDomain))
       .unique();
     if (existingByDomain) {
       await ctx.db.patch("companies", existingByDomain._id, {
@@ -271,7 +283,9 @@ export const upsertCatalog = agentMutation({
       .first();
     if (existingByName) {
       await ctx.db.patch("companies", existingByName._id, {
-        domain: domainFromArgs,
+        // Only overwrite domain when explicitly passed — website-derived hosts
+        // (careers/ATS URLs) must not replace a correct company domain.
+        domain: explicitDomain || existingByName.domain,
         website: args.website ?? existingByName.website,
         careersUrl: args.careersUrl ?? existingByName.careersUrl,
         linkedinUrl: args.linkedinUrl ?? existingByName.linkedinUrl,
@@ -289,8 +303,8 @@ export const upsertCatalog = agentMutation({
 
     return await ctx.db.insert("companies", {
       name: args.name,
-      domain: domainFromArgs,
-      website: args.website ?? websiteFromDomain(domainFromArgs),
+      domain: lookupDomain,
+      website: args.website ?? websiteFromDomain(lookupDomain),
       careersUrl: args.careersUrl,
       linkedinUrl: args.linkedinUrl,
       xUrl: args.xUrl,

@@ -48,10 +48,14 @@ export const list = query({
   returns: v.array(jobDoc),
   handler: async (ctx, args) => {
     if (args.status) {
-      return await ctx.db
+      const jobs = await ctx.db
         .query("jobs")
         .withIndex("by_status", (q) => q.eq("status", args.status!))
         .collect();
+      if (args.query) {
+        return jobs.filter((job) => job.query === args.query);
+      }
+      return jobs;
     }
     if (args.query) {
       return await ctx.db
@@ -98,12 +102,12 @@ export const upsert = mutation({
       await ctx.db.patch("jobs", existing._id, {
         title: args.title,
         company: args.company,
-        location: args.location,
-        why: args.why,
+        location: args.location ?? existing.location,
+        why: args.why ?? existing.why,
         source: args.source,
         status: args.status,
-        query: args.query,
-        rank: args.rank,
+        query: args.query ?? existing.query,
+        rank: args.rank ?? existing.rank,
         lastSeenAt: now,
       });
       return existing._id;
@@ -154,12 +158,12 @@ export const upsertMany = mutation({
         await ctx.db.patch("jobs", existing._id, {
           title: job.title,
           company: job.company,
-          location: job.location,
-          why: job.why,
+          location: job.location ?? existing.location,
+          why: job.why ?? existing.why,
           source: job.source,
           status: job.status,
-          query: job.query,
-          rank: job.rank,
+          query: job.query ?? existing.query,
+          rank: job.rank ?? existing.rank,
           lastSeenAt: now,
         });
         ids.push(existing._id);
