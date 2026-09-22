@@ -30,3 +30,7 @@ SearchBuddyViews paints whatever JSON agents write — no LLM inside the app.
 3. The window reloads on write.
 
 Full details (fixtures, view kinds, tests): [`macos/README.md`](https://github.com/hadzija7/search-buddy/blob/main/macos/README.md).
+
+## Demo
+
+[![Job Scout demo](https://img.youtube.com/vi/mgquVqEOKac/maxresdefault.jpg)](https://youtu.be/mgquVqEOKac)
